@@ -45,10 +45,34 @@ data class PomodoroSession(
 )
 
 @Serializable
+data class TaskItem(
+    val id: Long,
+    val title: String,
+    val done: Boolean = false,
+    val important: Boolean = false,
+    val color: Int = 0,
+    val createdAt: Long = 0L
+)
+
+@Serializable
+data class WaterRecord(
+    val dateKey: String,
+    val glasses: Int = 0
+)
+
+@Serializable
+data class MoodRecord(
+    val dateKey: String,
+    val mood: String = "😐"
+)
+
+@Serializable
 data class AppSettings(
     val userName: String = "Мастер времени",
     val dailyFocusGoal: Int = 8,
-    val themeMode: String = "SYSTEM" // LIGHT / DARK / SYSTEM
+    val themeMode: String = "SYSTEM",  // LIGHT / DARK / SYSTEM
+    val dynamicColor: Boolean = true,  // Material You (динимический цвет)
+    val fontFamily: String = "default" // default / inter / montserrat / playfair / comfortaa / space
 )
 
 data class DayStreak(

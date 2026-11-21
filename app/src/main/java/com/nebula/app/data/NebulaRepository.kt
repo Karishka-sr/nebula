@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -24,6 +25,9 @@ class NebulaRepository(private val context: Context) {
     private val notesKey = stringPreferencesKey("notes")
     private val habitsKey = stringPreferencesKey("habits")
     private val sessionsKey = stringPreferencesKey("sessions")
+    private val tasksKey = stringPreferencesKey("tasks")
+    private val waterKey = stringPreferencesKey("water")
+    private val moodsKey = stringPreferencesKey("moods")
     private val settingsKey = stringPreferencesKey("settings")
 
     // ---------- Notes ----------
@@ -111,6 +115,80 @@ class NebulaRepository(private val context: Context) {
         }
     }
 
+    // ---------- Tasks ----------
+    val tasks: Flow<List<TaskItem>> = context.dataStore.data.map { prefs ->
+        prefs[tasksKey]?.let { runCatching { json.decodeFromString<List<TaskItem>>(it) }.getOrNull() } ?: emptyList()
+    }
+
+    suspend fun addTask(title: String, important: Boolean) {
+        context.dataStore.edit { prefs ->
+            val current = prefs[tasksKey]?.let { runCatching { json.decodeFromString<List<TaskItem>>(it) }.getOrNull() } ?: emptyList()
+            val now = System.currentTimeMillis()
+            val newTask = TaskItem(
+                id = now,
+                title = title,
+                important = important,
+                color = if (important) 0xFFE53935.toInt() else TaskColors.random(),
+                createdAt = now
+            )
+            prefs[tasksKey] = json.encodeToString(current + newTask)
+        }
+    }
+
+    suspend fun toggleTask(id: Long) {
+        context.dataStore.edit { prefs ->
+            val current = prefs[tasksKey]?.let { runCatching { json.decodeFromString<List<TaskItem>>(it) }.getOrNull() } ?: emptyList()
+            val updated = current.map { if (it.id == id) it.copy(done = !it.done) else it }
+            prefs[tasksKey] = json.encodeToString(updated)
+        }
+    }
+
+    suspend fun deleteTask(id: Long) {
+        context.dataStore.edit { prefs ->
+            val current = prefs[tasksKey]?.let { runCatching { json.decodeFromString<List<TaskItem>>(it) }.getOrNull() } ?: emptyList()
+            prefs[tasksKey] = json.encodeToString(current.filter { it.id != id })
+        }
+    }
+
+    // ---------- Water ----------
+    val water: Flow<List<WaterRecord>> = context.dataStore.data.map { prefs ->
+        prefs[waterKey]?.let { runCatching { json.decodeFromString<List<WaterRecord>>(it) }.getOrNull() } ?: emptyList()
+    }
+
+    suspend fun setWater(dateKey: String, glasses: Int) {
+        context.dataStore.edit { prefs ->
+            val current = prefs[waterKey]?.let { runCatching { json.decodeFromString<List<WaterRecord>>(it) }.getOrNull() }?.toMutableList() ?: mutableListOf()
+            current.removeAll { it.dateKey == dateKey }
+            if (glasses > 0) current.add(WaterRecord(dateKey = dateKey, glasses = glasses))
+            prefs[waterKey] = json.encodeToString(current)
+        }
+    }
+
+    suspend fun incrementWater(dateKey: String, delta: Int) {
+        val today = waterEntries()
+        val glasses = (today[dateKey] ?: 0) + delta
+        setWater(dateKey, glasses)
+    }
+
+    private suspend fun waterEntries(): Map<String, Int> =
+        context.dataStore.data.map { prefs ->
+            prefs[waterKey]?.let { runCatching { json.decodeFromString<List<WaterRecord>>(it) }.getOrNull() } ?: emptyList()
+        }.first().associate { it.dateKey to it.glasses }
+
+    // ---------- Mood ----------
+    val moods: Flow<List<MoodRecord>> = context.dataStore.data.map { prefs ->
+        prefs[moodsKey]?.let { runCatching { json.decodeFromString<List<MoodRecord>>(it) }.getOrNull() } ?: emptyList()
+    }
+
+    suspend fun setMood(dateKey: String, mood: String) {
+        context.dataStore.edit { prefs ->
+            val current = prefs[moodsKey]?.let { runCatching { json.decodeFromString<List<MoodRecord>>(it) }.getOrNull() }?.toMutableList() ?: mutableListOf()
+            current.removeAll { it.dateKey == dateKey }
+            current.add(MoodRecord(dateKey = dateKey, mood = mood))
+            prefs[moodsKey] = json.encodeToString(current.sortedBy { it.dateKey })
+        }
+    }
+
     // ---------- Settings ----------
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
         prefs[settingsKey]?.let { runCatching { json.decodeFromString<AppSettings>(it) }.getOrNull() } ?: AppSettings()
@@ -125,5 +203,10 @@ class NebulaRepository(private val context: Context) {
 
 object NoteColors {
     val all = listOf(0xFF8E24AA.toInt(), 0xFF3949AB.toInt(), 0xFF00897B.toInt(), 0xFFF4511E.toInt())
+    fun random(): Int = all[Random().nextInt(all.size)]
+}
+
+object TaskColors {
+    val all = listOf(0xFF3949AB.toInt(), 0xFF00897B.toInt(), 0xFFF4511E.toInt(), 0xFFE53935.toInt(), 0xFFFFB300.toInt())
     fun random(): Int = all[Random().nextInt(all.size)]
 }

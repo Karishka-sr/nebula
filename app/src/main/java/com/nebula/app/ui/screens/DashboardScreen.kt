@@ -1,6 +1,7 @@
 package com.nebula.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,15 +22,17 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.WaterDrop
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -37,24 +40,35 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nebula.app.data.AppSettings
 import com.nebula.app.data.Habit
+import com.nebula.app.data.MoodRecord
 import com.nebula.app.data.NebulaRepository
 import com.nebula.app.data.Note
 import com.nebula.app.data.PomodoroSession
+import com.nebula.app.data.Quotes
 import com.nebula.app.data.dayKey
+import com.nebula.app.data.toLocalDateTime
+import com.nebula.app.data.dateFormatter
 import com.nebula.app.ui.navigation.Routes
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+
+const val WATER_GOAL = 8
+
+private val MoodOptions = listOf("😞", "😕", "😐", "🙂", "😄")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,12 +76,21 @@ fun DashboardScreen(
     repository: NebulaRepository,
     onOpenNotes: () -> Unit,
     onOpenStats: () -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    onOpenTasks: () -> Unit
 ) {
     val settings by repository.settings.collectAsState(initial = AppSettings())
     val notes by repository.notes.collectAsState(initial = emptyList())
     val habits by repository.habits.collectAsState(initial = emptyList())
     val sessions by repository.sessions.collectAsState(initial = emptyList())
+    val tasks by repository.tasks.collectAsState(initial = emptyList())
+    val water by repository.water.collectAsState(initial = emptyList())
+    val moods by repository.moods.collectAsState(initial = emptyList())
+    val scope = rememberCoroutineScope()
+
+    val todayKey = dayKey(LocalDate.now())
+    val todayWater = water.find { it.dateKey == todayKey }?.glasses ?: 0
+    val activeTasks = tasks.count { !it.done }
 
     val todayLetter = LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE", Locale("ru")))
         .replaceFirstChar { it.titlecase(Locale("ru")) }
@@ -106,6 +129,11 @@ fun DashboardScreen(
         ) {
             Spacer(Modifier.height(8.dp))
 
+            // Цитата дня
+            QuoteOfTheDayCard()
+
+            Spacer(Modifier.height(16.dp))
+
             // Focus progress card
             val todayFocus = sessions.count {
                 it.type == "FOCUS" && it.completedAt >= LocalDate.now().atStartOfDay()
@@ -121,7 +149,8 @@ fun DashboardScreen(
                     modifier = Modifier.weight(1f),
                     label = "Заметки",
                     value = notes.size.toString(),
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
+                    onClick = onOpenNotes
                 )
                 StatTile(
                     modifier = Modifier.weight(1f),
@@ -133,8 +162,64 @@ fun DashboardScreen(
                     modifier = Modifier.weight(1f),
                     label = "Фокус",
                     value = "${sessions.size}",
-                    color = MaterialTheme.colorScheme.secondary
+                    color = MaterialTheme.colorScheme.secondary,
+                    onClick = onOpenStats
                 )
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            // Задачи сегодня
+            SectionHeader("Задачи", onClick = { onOpenTasks() })
+            Spacer(Modifier.height(8.dp))
+            if (tasks.isEmpty()) {
+                EmptyHint("Активных задач нет — добавь пару ✍️")
+            } else {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpenTasks() },
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            if (activeTasks > 0) "В работе: $activeTasks задач"
+                            else "Все задачи выполнены! 🎉",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        tasks.filter { !it.done }.take(3).forEach { task ->
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 3.dp)) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(if (task.color != 0) Color(task.color) else MaterialTheme.colorScheme.primary)
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Text(task.title, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            // Вода и настроение
+            WaterCard(glasses = todayWater, onPlus = {
+                scope.launch { repository.incrementWater(todayKey, 1) }
+            }, onMinus = {
+                scope.launch { repository.incrementWater(todayKey, -1) }
+            })
+
+            Spacer(Modifier.height(16.dp))
+
+            MoodCard(currentMood = moods.find { it.dateKey == todayKey }?.mood ?: "") { mood ->
+                scope.launch { repository.setMood(todayKey, mood) }
             }
 
             Spacer(Modifier.height(24.dp))
@@ -145,7 +230,6 @@ fun DashboardScreen(
             if (habits.isEmpty()) {
                 EmptyHint("Добавь привычки во вкладке «Привычки»")
             } else {
-                val todayKey = dayKey(LocalDate.now())
                 habits.forEach { habit ->
                     HabitTodayRow(habit, done = todayKey in habit.completionDates)
                 }
@@ -164,6 +248,119 @@ fun DashboardScreen(
             }
 
             Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun QuoteOfTheDayCard() {
+    val quote = Quotes.quoteOfTheDay()
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("💡", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.width(8.dp))
+                Text("Цитата дня", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                quote.text,
+                style = MaterialTheme.typography.bodyLarge,
+                fontStyle = FontStyle.Italic,
+                fontWeight = FontWeight.Medium
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "— ${quote.author}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun WaterCard(glasses: Int, onPlus: () -> Unit, onMinus: () -> Unit) {
+    val progress = (glasses.toFloat() / WATER_GOAL).coerceIn(0f, 1f)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.WaterDrop, contentDescription = null, tint = Color(0xFF29B6F6))
+                Spacer(Modifier.width(8.dp))
+                Text("Вода сегодня", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text("$glasses / $WATER_GOAL", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            }
+            Spacer(Modifier.height(10.dp))
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(CircleShape),
+                color = Color(0xFF29B6F6),
+                trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            )
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = onMinus, modifier = Modifier.weight(1f)) {
+                    Text("− 1")
+                }
+                Button(onClick = onPlus, modifier = Modifier.weight(1f)) {
+                    Text("+ 1 стакан")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MoodCard(currentMood: String, onSelect: (String) -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("🎭", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.width(8.dp))
+                Text("Как настроение?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                if (currentMood.isNotEmpty()) {
+                    Text("Сегодня: $currentMood", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MoodOptions.forEach { mood ->
+                    val selected = mood == currentMood || (currentMood.isEmpty() && mood == "😐")
+                    Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(CircleShape)
+                            .background(if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface)
+                            .clickable { onSelect(mood) },
+                        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    ) {
+                        Box(modifier = Modifier.padding(8.dp), contentAlignment = Alignment.Center) {
+                            Text(mood, fontSize = 26.sp)
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -260,9 +457,10 @@ private fun FocusCard(todayFocus: Int, goal: Int) {
 }
 
 @Composable
-fun StatTile(modifier: Modifier = Modifier, label: String, value: String, color: Color) {
+fun StatTile(modifier: Modifier = Modifier, label: String, value: String, color: Color, onClick: (() -> Unit)? = null) {
+    val clickModifier = if (onClick != null) Modifier.clickable { onClick() } else Modifier
     Card(
-        modifier = modifier,
+        modifier = modifier.then(clickModifier),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)

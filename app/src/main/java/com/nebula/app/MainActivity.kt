@@ -28,7 +28,7 @@ class MainActivity : ComponentActivity() {
                 "DARK" -> true
                 else -> androidx.compose.foundation.isSystemInDarkTheme()
             }
-            NebulaTheme(darkTheme = darkTheme) {
+            NebulaTheme(darkTheme = darkTheme, dynamicColor = settings.dynamicColor, fontSelection = settings.fontFamily) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

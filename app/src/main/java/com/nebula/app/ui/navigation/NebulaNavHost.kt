@@ -2,6 +2,7 @@ package com.nebula.app.ui.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.automirrored.filled.Note
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CheckCircle
@@ -33,14 +34,18 @@ import com.nebula.app.ui.screens.NotesScreen
 import com.nebula.app.ui.screens.PomodoroScreen
 import com.nebula.app.ui.screens.SettingsScreen
 import com.nebula.app.ui.screens.StatsScreen
+import com.nebula.app.ui.screens.TasksScreen
+import com.nebula.app.ui.screens.WallpapersScreen
 
 object Routes {
     const val DASHBOARD = "dashboard"
+    const val TASKS = "tasks"
     const val NOTES = "notes"
     const val HABITS = "habits"
     const val POMODORO = "pomodoro"
     const val STATS = "stats"
     const val SETTINGS = "settings"
+    const val WALLPAPERS = "wallpapers"
 }
 
 data class BottomNavItem(
@@ -51,10 +56,10 @@ data class BottomNavItem(
 
 val bottomNavItems = listOf(
     BottomNavItem(Routes.DASHBOARD, "Главная", Icons.Filled.Home),
+    BottomNavItem(Routes.TASKS, "Задачи", Icons.Filled.Checklist),
     BottomNavItem(Routes.NOTES, "Заметки", Icons.AutoMirrored.Filled.Note),
     BottomNavItem(Routes.HABITS, "Привычки", Icons.Filled.CheckCircle),
-    BottomNavItem(Routes.POMODORO, "Фокус", Icons.Filled.Timer),
-    BottomNavItem(Routes.STATS, "Статистика", Icons.Filled.BarChart)
+    BottomNavItem(Routes.POMODORO, "Фокус", Icons.Filled.Timer)
 )
 
 @Composable
@@ -96,8 +101,12 @@ fun NebulaNavHost(
                     repository = repository,
                     onOpenNotes = { navController.navigate(Routes.NOTES) },
                     onOpenStats = { navController.navigate(Routes.STATS) },
-                    onOpenSettings = { navController.navigate(Routes.SETTINGS) }
+                    onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                    onOpenTasks = { navController.navigate(Routes.TASKS) }
                 )
+            }
+            composable(Routes.TASKS) {
+                TasksScreen(repository)
             }
             composable(Routes.NOTES) {
                 NotesScreen(repository)
@@ -112,7 +121,10 @@ fun NebulaNavHost(
                 StatsScreen(repository)
             }
             composable(Routes.SETTINGS) {
-                SettingsScreen(repository)
+                SettingsScreen(repository, onOpenWallpapers = { navController.navigate(Routes.WALLPAPERS) })
+            }
+            composable(Routes.WALLPAPERS) {
+                WallpapersScreen()
             }
         }
     }
