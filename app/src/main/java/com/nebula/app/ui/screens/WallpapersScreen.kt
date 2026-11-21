@@ -85,7 +85,7 @@ fun WallpapersScreen() {
                     index = index,
                     onClick = {
                         setWallpaper(context, index) {
-                            scope.launch { snackbarHostState.showSnackbar("Обои установлены 🌌") }
+                            scope.launch { snackbarHostState.showSnackbar("Обои установлены") }
                         }
                     },
                     modifier = Modifier.animateItem()

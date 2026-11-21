@@ -13,11 +13,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -253,10 +255,13 @@ fun SettingsScreen(
                     modifier = Modifier.padding(20.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        "🌌",
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.graphicsLayer { translationY = floatY }
+                    Icon(
+                        Icons.Filled.Wallpaper,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .size(32.dp)
+                            .graphicsLayer { translationY = floatY }
                     )
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
@@ -278,7 +283,7 @@ fun SettingsScreen(
             Spacer(Modifier.height(24.dp))
 
             Text(
-                "Nebula v2.0.0\nСделано с ❤️ на Kotlin + Jetpack Compose · Material Design 3",
+                "Nebula v2.0.0\nСделано на Kotlin + Jetpack Compose · Material Design 3",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier

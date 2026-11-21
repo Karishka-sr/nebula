@@ -24,8 +24,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Coffee
+import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -294,10 +297,10 @@ fun PomodoroScreen(repository: NebulaRepository) {
 
 @Composable
 private fun SessionRow(session: PomodoroSession) {
-    val typeName = when (session.type) {
-        "FOCUS" -> "🧘 Фокус"
-        "SHORT_BREAK" -> "☕ Перерыв"
-        else -> "🌙 Длинный"
+    val (typeIcon, typeName) = when (session.type) {
+        "FOCUS" -> Icons.Filled.SelfImprovement to "Фокус"
+        "SHORT_BREAK" -> Icons.Filled.Coffee to "Перерыв"
+        else -> Icons.Filled.NightsStay to "Длинный"
     }
     Card(
         modifier = Modifier
@@ -311,6 +314,8 @@ private fun SessionRow(session: PomodoroSession) {
             modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Icon(typeIcon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
             Text(typeName, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
             Text(
                 "${session.durationMinutes} мин",

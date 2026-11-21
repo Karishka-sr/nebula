@@ -21,6 +21,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.WaterDrop
@@ -63,6 +65,7 @@ import com.nebula.app.ui.animations.AnimatedNumber
 import com.nebula.app.ui.animations.RevealIn
 import com.nebula.app.ui.animations.nebulaSpring
 import com.nebula.app.ui.animations.rememberRevealed
+import com.nebula.app.ui.icons.NebulaIcons
 import com.nebula.app.ui.navigation.Routes
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -70,8 +73,6 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 const val WATER_GOAL = 8
-
-private val MoodOptions = listOf("😞", "😕", "😐", "🙂", "😄")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -103,7 +104,7 @@ fun DashboardScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("Привет, ${settings.userName}! 👋", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Text("Привет, ${settings.userName}!", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         Text(todayLetter, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 },
@@ -186,7 +187,7 @@ fun DashboardScreen(
             }
             Spacer(Modifier.height(8.dp))
             if (tasks.isEmpty()) {
-                RevealIn(visible = revealedTasks) { EmptyHint("Активных задач нет — добавь пару ✍️") }
+                RevealIn(visible = revealedTasks) { EmptyHint("Активных задач нет — добавь пару") }
             } else {
                 RevealIn(visible = revealedTasks) {
                     Card(
@@ -200,7 +201,7 @@ fun DashboardScreen(
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(
                                 if (activeTasks > 0) "В работе: $activeTasks задач"
-                                else "Все задачи выполнены! 🎉",
+                                else "Все задачи выполнены!",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -292,7 +293,12 @@ private fun QuoteOfTheDayCard() {
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("💡", style = MaterialTheme.typography.titleMedium)
+                Icon(
+                    Icons.Filled.Lightbulb,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
                 Spacer(Modifier.width(8.dp))
                 Text("Цитата дня", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -355,6 +361,7 @@ private fun WaterCard(glasses: Int, onPlus: () -> Unit, onMinus: () -> Unit) {
 
 @Composable
 private fun MoodCard(currentMood: String, onSelect: (String) -> Unit) {
+    val selectedKey = NebulaIcons.normalizeMood(currentMood)
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -363,19 +370,29 @@ private fun MoodCard(currentMood: String, onSelect: (String) -> Unit) {
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("🎭", style = MaterialTheme.typography.titleMedium)
+                Icon(
+                    Icons.Filled.Face,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp)
+                )
                 Spacer(Modifier.width(8.dp))
                 Text("Как настроение?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                if (currentMood.isNotEmpty()) {
-                    Text("Сегодня: $currentMood", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (currentMood.isNotBlank()) {
+                    Icon(
+                        NebulaIcons.moodIcon(currentMood),
+                        contentDescription = NebulaIcons.moodLabel(currentMood),
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MoodOptions.forEach { mood ->
-                    val selected = mood == currentMood || (currentMood.isEmpty() && mood == "😐")
-                    val emojiScale by animateFloatAsState(
-                        targetValue = if (selected) 1.3f else 1f,
+                NebulaIcons.moods.forEach { mood ->
+                    val selected = mood.key == selectedKey
+                    val iconScale by animateFloatAsState(
+                        targetValue = if (selected) 1.25f else 1f,
                         animationSpec = nebulaSpring,
                         label = "moodScale"
                     )
@@ -384,20 +401,25 @@ private fun MoodCard(currentMood: String, onSelect: (String) -> Unit) {
                             .weight(1f)
                             .clip(CircleShape)
                             .background(if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface)
-                            .clickable { onSelect(mood) },
+                            .clickable { onSelect(mood.key) },
                         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
                         Box(
                             modifier = Modifier
-                                .padding(8.dp)
+                                .padding(vertical = 12.dp, horizontal = 4.dp)
                                 .graphicsLayer {
-                                    scaleX = emojiScale
-                                    scaleY = emojiScale
+                                    scaleX = iconScale
+                                    scaleY = iconScale
                                 },
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(mood, fontSize = 26.sp)
+                            Icon(
+                                mood.icon,
+                                contentDescription = mood.label,
+                                tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
                     }
                 }
@@ -489,7 +511,7 @@ private fun FocusCard(todayFocus: Int, goal: Int) {
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    if (progress >= 1f) "Цель дня достигнута! 🎉" else "До цели осталось ${goal - todayFocus}",
+                    if (progress >= 1f) "Цель дня достигнута!" else "До цели осталось ${goal - todayFocus}",
                     color = Color.White.copy(alpha = 0.9f),
                     style = MaterialTheme.typography.bodySmall
                 )

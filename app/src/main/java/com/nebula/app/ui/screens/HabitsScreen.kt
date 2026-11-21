@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Adjust
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -61,6 +62,7 @@ import com.nebula.app.data.Habit
 import com.nebula.app.data.NebulaRepository
 import com.nebula.app.data.dayKey
 import com.nebula.app.ui.animations.nebulaSpring
+import com.nebula.app.ui.icons.NebulaIcons
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.TextStyle
@@ -71,7 +73,7 @@ private val HabitColors = listOf(
     0xFF40C4FF.toInt(), 0xFFFFD740.toInt(), 0xFF69F0AE.toInt(), 0xFFB388FF.toInt()
 )
 
-private val HabitIcons = listOf("💧", "🏃", "📖", "🧘", "😴", "🥗", "💪", "✍️", "🎯", "🌅", "🦷", "🚭")
+// Кликабельные иконки привычек приходят из каталога NebulaIcons.habitEntries
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -124,7 +126,14 @@ fun HabitsScreen(repository: NebulaRepository) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Text("🎯", fontSize = MaterialTheme.typography.displayMedium.fontSize)
+                Icons.Filled.Adjust.let { icon ->
+                    Icon(
+                        icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(56.dp)
+                    )
+                }
                 Spacer(Modifier.height(8.dp))
                 Text("Нет привычек", style = MaterialTheme.typography.titleMedium)
                 Text(
@@ -196,12 +205,17 @@ fun HabitCard(
                         .background(color.copy(alpha = 0.15f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(habit.icon, fontSize = 22.sp)
+                    Icon(
+                        NebulaIcons.habitIcon(habit.icon),
+                        contentDescription = habit.name,
+                        tint = color,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
                 Spacer(Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(habit.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 2)
-                    Text("Серия: $streak 🔥", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Серия: $streak", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 IconButton(onClick = onDelete, modifier = Modifier.size(28.dp)) {
                     Icon(Icons.Filled.Delete, contentDescription = "Удалить", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
@@ -270,7 +284,7 @@ fun HabitCreateDialog(
     onCreate: (String, String, Int) -> Unit
 ) {
     var name by rememberSaveable { mutableStateOf("") }
-    var icon by remember { mutableStateOf(HabitIcons.first()) }
+    var icon by remember { mutableStateOf(NebulaIcons.habitEntries.first().first) }
     var color by remember { mutableIntStateOf(HabitColors.first()) }
 
     AlertDialog(
@@ -289,18 +303,18 @@ fun HabitCreateDialog(
                 Text("Иконка", style = MaterialTheme.typography.labelMedium)
                 Spacer(Modifier.height(8.dp))
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(HabitIcons) { i ->
+                    items(NebulaIcons.habitEntries) { (key, image) ->
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
+                                .size(44.dp)
                                 .background(
-                                    if (i == icon) Color(color).copy(alpha = 0.3f) else Color.Transparent,
+                                    if (key == icon) Color(color).copy(alpha = 0.3f) else Color.Transparent,
                                     CircleShape
                                 )
-                                .clickable { icon = i },
+                                .clickable { icon = key },
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(i, fontSize = 20.sp)
+                            Icon(image, contentDescription = null, tint = Color(color), modifier = Modifier.size(22.dp))
                         }
                     }
                 }

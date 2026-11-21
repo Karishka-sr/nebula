@@ -22,6 +22,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -43,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nebula.app.data.NebulaRepository
 import com.nebula.app.data.dayKey
+import com.nebula.app.ui.icons.NebulaIcons
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
@@ -232,10 +234,17 @@ fun StatsScreen(repository: NebulaRepository) {
                                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    moodByDay[dayKey(day)] ?: "·",
-                                    fontSize = 18.sp
-                                )
+                                val storedMood = moodByDay[dayKey(day)]
+                                if (storedMood.isNullOrBlank()) {
+                                    Text("·", fontSize = 18.sp)
+                                } else {
+                                    Icon(
+                                        NebulaIcons.moodIcon(storedMood),
+                                        contentDescription = NebulaIcons.moodLabel(storedMood),
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
                             }
                             Spacer(Modifier.height(6.dp))
                             Text(

@@ -63,7 +63,7 @@ data class WaterRecord(
 @Serializable
 data class MoodRecord(
     val dateKey: String,
-    val mood: String = "😐"
+    val mood: String = "NEUTRAL"
 )
 
 @Serializable
