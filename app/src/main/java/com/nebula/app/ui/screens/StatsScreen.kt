@@ -1,5 +1,8 @@
 package com.nebula.app.ui.screens
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,8 +28,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -91,13 +98,13 @@ fun StatsScreen(repository: NebulaRepository) {
                 StatTile(
                     modifier = Modifier.weight(1f),
                     label = "Всего фокусов",
-                    value = totalPomodoros.toString(),
+                    value = totalPomodoros,
                     color = MaterialTheme.colorScheme.primary
                 )
                 StatTile(
                     modifier = Modifier.weight(1f),
                     label = "Минут в фокусе",
-                    value = totalFocusMinutes.toString(),
+                    value = totalFocusMinutes.toInt(),
                     color = MaterialTheme.colorScheme.tertiary
                 )
             }
@@ -255,6 +262,8 @@ fun StatsScreen(repository: NebulaRepository) {
 @Composable
 fun BarChart(data: List<Int>, max: Int, labels: List<LocalDate>, barColor: Color = MaterialTheme.colorScheme.primary) {
     val barColorContainer = barColor.copy(alpha = 0.4f)
+    var revealed by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { revealed = true }
     Column {
         Row(
             modifier = Modifier
@@ -265,6 +274,11 @@ fun BarChart(data: List<Int>, max: Int, labels: List<LocalDate>, barColor: Color
         ) {
             data.forEachIndexed { index, value ->
                 val fraction = (value.toFloat() / max)
+                val animatedFraction by animateFloatAsState(
+                    targetValue = if (revealed) fraction else 0f,
+                    animationSpec = tween(700, delayMillis = 90 * index, easing = FastOutSlowInEasing),
+                    label = "barHeight"
+                )
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.weight(1f)
@@ -273,7 +287,7 @@ fun BarChart(data: List<Int>, max: Int, labels: List<LocalDate>, barColor: Color
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(0.7f)
-                            .height((fraction * 100).dp.coerceAtLeast(6.dp))
+                            .height((animatedFraction * 100).dp.coerceAtLeast(6.dp))
                             .background(
                                 if (index == data.lastIndex) barColor else barColorContainer,
                                 shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)

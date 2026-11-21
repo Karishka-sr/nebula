@@ -1,5 +1,14 @@
 package com.nebula.app.ui.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Checklist
@@ -18,8 +27,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -27,6 +38,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.nebula.app.ui.animations.nebulaSpring
 import com.nebula.app.data.NebulaRepository
 import com.nebula.app.ui.screens.DashboardScreen
 import com.nebula.app.ui.screens.HabitsScreen
@@ -62,6 +74,20 @@ val bottomNavItems = listOf(
     BottomNavItem(Routes.POMODORO, "Фокус", Icons.Filled.Timer)
 )
 
+// Плавные переходы между экранами (Material motion: fade + вертикальный сдвиг)
+private val navIn: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
+    fadeIn(tween(320)) + slideInVertically(tween(320)) { it / 10 }
+}
+private val navOut: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
+    fadeOut(tween(220)) + slideOutVertically(tween(220)) { -it / 10 }
+}
+private val navPopIn: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
+    fadeIn(tween(320)) + slideInVertically(tween(320)) { -it / 10 }
+}
+private val navPopOut: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
+    fadeOut(tween(220)) + slideOutVertically(tween(220)) { it / 10 }
+}
+
 @Composable
 fun NebulaNavHost(
     modifier: Modifier = Modifier,
@@ -94,7 +120,11 @@ fun NebulaNavHost(
         NavHost(
             navController = navController,
             startDestination = Routes.DASHBOARD,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding),
+            enterTransition = navIn,
+            exitTransition = navOut,
+            popEnterTransition = navPopIn,
+            popExitTransition = navPopOut
         ) {
             composable(Routes.DASHBOARD) {
                 DashboardScreen(
@@ -141,10 +171,24 @@ private fun NebulaBottomBar(
     ) {
         bottomNavItems.forEach { item ->
             val selected = currentDestination?.hierarchy?.any { it.route == item.route } == true
+            val iconScale by animateFloatAsState(
+                targetValue = if (selected) 1.18f else 1f,
+                animationSpec = nebulaSpring,
+                label = "navIconScale"
+            )
             NavigationBarItem(
                 selected = selected,
                 onClick = { onNavigate(item.route) },
-                icon = { Icon(item.icon, contentDescription = item.label) },
+                icon = {
+                    Icon(
+                        item.icon,
+                        contentDescription = item.label,
+                        modifier = Modifier.graphicsLayer {
+                            scaleX = iconScale
+                            scaleY = iconScale
+                        }
+                    )
+                },
                 label = { Text(item.label, fontSize = MaterialTheme.typography.labelSmall.fontSize) },
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = MaterialTheme.colorScheme.primary,

@@ -1,5 +1,7 @@
 package com.nebula.app.ui.screens
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -18,7 +20,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -45,11 +46,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.nebula.app.data.NebulaRepository
 import com.nebula.app.data.TaskItem
+import com.nebula.app.ui.animations.nebulaSpring
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -87,8 +91,27 @@ fun TasksScreen(repository: NebulaRepository) {
             )
         },
         floatingActionButton = {
+            val fabRotation by animateFloatAsState(
+                targetValue = if (showCreate) 135f else 0f,
+                animationSpec = nebulaSpring,
+                label = "fabRotation"
+            )
+            val fabScale by animateFloatAsState(
+                targetValue = if (showCreate) 0.7f else 1f,
+                animationSpec = nebulaSpring,
+                label = "fabScale"
+            )
             FloatingActionButton(onClick = { showCreate = true }) {
-                Icon(Icons.Filled.Add, contentDescription = "Новая задача")
+                Icon(
+                    Icons.Filled.Add,
+                    contentDescription = "Новая задача",
+                    modifier = Modifier
+                        .rotate(fabRotation)
+                        .graphicsLayer {
+                            scaleX = fabScale
+                            scaleY = fabScale
+                        }
+                )
             }
         }
     ) { padding ->
@@ -143,7 +166,8 @@ fun TasksScreen(repository: NebulaRepository) {
                         TaskRow(
                             task = task,
                             onToggle = { scope.launch { repository.toggleTask(task.id) } },
-                            onDelete = { scope.launch { repository.deleteTask(task.id) } }
+                            onDelete = { scope.launch { repository.deleteTask(task.id) } },
+                            modifier = Modifier.animateItem()
                         )
                     }
                 }
@@ -163,9 +187,13 @@ fun TasksScreen(repository: NebulaRepository) {
 }
 
 @Composable
-private fun TaskRow(task: TaskItem, onToggle: () -> Unit, onDelete: () -> Unit) {
+private fun TaskRow(task: TaskItem, onToggle: () -> Unit, onDelete: () -> Unit, modifier: Modifier = Modifier) {
+    val titleColor by animateColorAsState(
+        targetValue = if (task.done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+        label = "taskTitleColor"
+    )
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
@@ -186,7 +214,7 @@ private fun TaskRow(task: TaskItem, onToggle: () -> Unit, onDelete: () -> Unit) 
                     task.title,
                     style = MaterialTheme.typography.bodyLarge,
                     textDecoration = if (task.done) TextDecoration.LineThrough else null,
-                    color = if (task.done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+                    color = titleColor
                 )
                 if (task.important) {
                     Row(verticalAlignment = Alignment.CenterVertically) {

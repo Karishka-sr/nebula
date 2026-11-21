@@ -5,6 +5,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -85,7 +87,8 @@ fun WallpapersScreen() {
                         setWallpaper(context, index) {
                             scope.launch { snackbarHostState.showSnackbar("Обои установлены 🌌") }
                         }
-                    }
+                    },
+                    modifier = Modifier.animateItem()
                 )
             }
         }
@@ -93,7 +96,7 @@ fun WallpapersScreen() {
 }
 
 @Composable
-private fun WallpaperCard(index: Int, onClick: () -> Unit) {
+private fun WallpaperCard(index: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var bitmap by remember { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
     LaunchedEffect(index) {
@@ -103,7 +106,7 @@ private fun WallpaperCard(index: Int, onClick: () -> Unit) {
     }
 
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .aspectRatio(9f / 16f)
             .clickable { onClick() },
@@ -111,13 +114,15 @@ private fun WallpaperCard(index: Int, onClick: () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        bitmap?.let { bmp ->
-            Image(
-                bitmap = bmp,
-                contentDescription = "Обои $index",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
+        Crossfade(targetState = bitmap, animationSpec = tween(450), label = "wallpaperLoad") { bmp ->
+            if (bmp != null) {
+                Image(
+                    bitmap = bmp,
+                    contentDescription = "Обои $index",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
         }
     }
 }

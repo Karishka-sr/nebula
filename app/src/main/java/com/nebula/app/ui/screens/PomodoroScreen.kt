@@ -1,6 +1,11 @@
 package com.nebula.app.ui.screens
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -47,16 +52,20 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nebula.app.data.NebulaRepository
 import com.nebula.app.data.PomodoroSession
+import com.nebula.app.ui.animations.RevealIn
+import com.nebula.app.ui.animations.rememberRevealed
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -123,6 +132,14 @@ fun PomodoroScreen(repository: NebulaRepository) {
         targetValue = progress,
         animationSpec = tween(500),
         label = "timerProgress"
+    )
+
+    val pulseTransition = rememberInfiniteTransition(label = "timerPulse")
+    val pulseScale by pulseTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.05f,
+        animationSpec = infiniteRepeatable(tween(750), RepeatMode.Reverse),
+        label = "pulseScale"
     )
 
     fun selectMode(newMode: String) {
@@ -205,7 +222,11 @@ fun PomodoroScreen(repository: NebulaRepository) {
                     Text(
                         formatTime(remaining),
                         fontSize = 52.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.graphicsLayer {
+                            scaleX = if (isRunning) pulseScale else 1f
+                            scaleY = if (isRunning) pulseScale else 1f
+                        }
                     )
                     Text(
                         when (mode) {
@@ -226,10 +247,13 @@ fun PomodoroScreen(repository: NebulaRepository) {
                     onClick = { isRunning = !isRunning },
                     modifier = Modifier.height(52.dp)
                 ) {
-                    Icon(
-                        if (isRunning) Icons.Filled.Stop else Icons.Filled.PlayArrow,
-                        contentDescription = null
-                    )
+                    Crossfade(targetState = isRunning, animationSpec = tween(280), label = "playIcon") { running ->
+                        if (running) {
+                            Icon(Icons.Filled.Stop, contentDescription = null)
+                        } else {
+                            Icon(Icons.Filled.PlayArrow, contentDescription = null)
+                        }
+                    }
                     Spacer(Modifier.width(8.dp))
                     Text(if (isRunning) "Стоп" else "Старт", style = MaterialTheme.typography.titleMedium)
                 }
@@ -257,8 +281,10 @@ fun PomodoroScreen(repository: NebulaRepository) {
                     )
                 }
             } else {
-                recent.forEach { session ->
-                    SessionRow(session)
+                recent.forEachIndexed { index, session ->
+                    RevealIn(visible = rememberRevealed(index * 60L)) {
+                        SessionRow(session)
+                    }
                 }
             }
             Spacer(Modifier.height(24.dp))

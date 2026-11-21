@@ -1,5 +1,7 @@
 package com.nebula.app.ui.screens
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -49,13 +51,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nebula.app.data.Habit
 import com.nebula.app.data.NebulaRepository
 import com.nebula.app.data.dayKey
+import com.nebula.app.ui.animations.nebulaSpring
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.TextStyle
@@ -97,8 +102,17 @@ fun HabitsScreen(repository: NebulaRepository) {
             )
         },
         floatingActionButton = {
+            val rotation by animateFloatAsState(
+                targetValue = if (showCreate) 135f else 0f,
+                animationSpec = nebulaSpring,
+                label = "habitsFabRotation"
+            )
             FloatingActionButton(onClick = { showCreate = true }) {
-                Icon(Icons.Filled.Add, contentDescription = "Новая привычка")
+                Icon(
+                    Icons.Filled.Add,
+                    contentDescription = "Новая привычка",
+                    modifier = Modifier.rotate(rotation)
+                )
             }
         }
     ) { padding ->
@@ -135,7 +149,8 @@ fun HabitsScreen(repository: NebulaRepository) {
                         todayKey = todayKey,
                         weekDates = (6L downTo 0L).map { today.minusDays(it) },
                         onToggle = { scope.launch { repository.toggleHabit(habit.id, todayKey) } },
-                        onDelete = { scope.launch { repository.deleteHabit(habit.id) } }
+                        onDelete = { scope.launch { repository.deleteHabit(habit.id) } },
+                        modifier = Modifier.animateItem()
                     )
                 }
             }
@@ -159,13 +174,14 @@ fun HabitCard(
     todayKey: String,
     weekDates: List<LocalDate>,
     onToggle: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val color = Color(habit.color)
     val streak = currentStreak(habit, LocalDate.now())
 
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onToggle),
         shape = RoundedCornerShape(20.dp),
@@ -198,14 +214,27 @@ fun HabitCard(
                 weekDates.forEach { date ->
                     val done = dayKey(date) in habit.completionDates
                     val isToday = date == LocalDate.now()
+                    val dotColor by animateColorAsState(
+                        targetValue = when {
+                            done && isToday -> color
+                            done -> color.copy(alpha = 0.7f)
+                            else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        },
+                        label = "habitDotColor"
+                    )
+                    val dotScale by animateFloatAsState(
+                        targetValue = if (done && isToday) 1.15f else 1f,
+                        animationSpec = nebulaSpring,
+                        label = "habitDotScale"
+                    )
                     Box(
                         modifier = Modifier
                             .size(30.dp)
-                            .background(
-                                if (done) color.copy(alpha = if (isToday) 1f else 0.7f)
-                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                CircleShape
-                            ),
+                            .graphicsLayer {
+                                scaleX = dotScale
+                                scaleY = dotScale
+                            }
+                            .background(dotColor, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(

@@ -1,5 +1,6 @@
 package com.nebula.app.ui.screens
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -46,20 +47,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nebula.app.data.AppSettings
 import com.nebula.app.data.Habit
-import com.nebula.app.data.MoodRecord
 import com.nebula.app.data.NebulaRepository
 import com.nebula.app.data.Note
 import com.nebula.app.data.PomodoroSession
 import com.nebula.app.data.Quotes
 import com.nebula.app.data.dayKey
-import com.nebula.app.data.toLocalDateTime
-import com.nebula.app.data.dateFormatter
+import com.nebula.app.ui.animations.AnimatedNumber
+import com.nebula.app.ui.animations.RevealIn
+import com.nebula.app.ui.animations.nebulaSpring
+import com.nebula.app.ui.animations.rememberRevealed
 import com.nebula.app.ui.navigation.Routes
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -130,7 +133,8 @@ fun DashboardScreen(
             Spacer(Modifier.height(8.dp))
 
             // Цитата дня
-            QuoteOfTheDayCard()
+            val revealedQuote = rememberRevealed(0)
+            RevealIn(visible = revealedQuote) { QuoteOfTheDayCard() }
 
             Spacer(Modifier.height(16.dp))
 
@@ -139,68 +143,79 @@ fun DashboardScreen(
                 it.type == "FOCUS" && it.completedAt >= LocalDate.now().atStartOfDay()
                     .atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
             }
-            FocusCard(todayFocus = todayFocus, goal = settings.dailyFocusGoal)
+            val revealedFocus = rememberRevealed(90)
+            RevealIn(visible = revealedFocus) {
+                FocusCard(todayFocus = todayFocus, goal = settings.dailyFocusGoal)
+            }
 
             Spacer(Modifier.height(16.dp))
 
             // Quick stats row
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatTile(
-                    modifier = Modifier.weight(1f),
-                    label = "Заметки",
-                    value = notes.size.toString(),
-                    color = MaterialTheme.colorScheme.primary,
-                    onClick = onOpenNotes
-                )
-                StatTile(
-                    modifier = Modifier.weight(1f),
-                    label = "Привычки",
-                    value = habits.size.toString(),
-                    color = MaterialTheme.colorScheme.tertiary
-                )
-                StatTile(
-                    modifier = Modifier.weight(1f),
-                    label = "Фокус",
-                    value = "${sessions.size}",
-                    color = MaterialTheme.colorScheme.secondary,
-                    onClick = onOpenStats
-                )
+            val revealedStats = rememberRevealed(180)
+            RevealIn(visible = revealedStats) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    StatTile(
+                        modifier = Modifier.weight(1f),
+                        label = "Заметки",
+                        value = notes.size,
+                        color = MaterialTheme.colorScheme.primary,
+                        onClick = onOpenNotes
+                    )
+                    StatTile(
+                        modifier = Modifier.weight(1f),
+                        label = "Привычки",
+                        value = habits.size,
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
+                    StatTile(
+                        modifier = Modifier.weight(1f),
+                        label = "Фокус",
+                        value = sessions.size,
+                        color = MaterialTheme.colorScheme.secondary,
+                        onClick = onOpenStats
+                    )
+                }
             }
 
             Spacer(Modifier.height(24.dp))
 
             // Задачи сегодня
-            SectionHeader("Задачи", onClick = { onOpenTasks() })
+            val revealedTasks = rememberRevealed(270)
+            RevealIn(visible = revealedTasks) {
+                SectionHeader("Задачи", onClick = { onOpenTasks() })
+            }
             Spacer(Modifier.height(8.dp))
             if (tasks.isEmpty()) {
-                EmptyHint("Активных задач нет — добавь пару ✍️")
+                RevealIn(visible = revealedTasks) { EmptyHint("Активных задач нет — добавь пару ✍️") }
             } else {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onOpenTasks() },
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            if (activeTasks > 0) "В работе: $activeTasks задач"
-                            else "Все задачи выполнены! 🎉",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        tasks.filter { !it.done }.take(3).forEach { task ->
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 3.dp)) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(8.dp)
-                                        .clip(CircleShape)
-                                        .background(if (task.color != 0) Color(task.color) else MaterialTheme.colorScheme.primary)
-                                )
-                                Spacer(Modifier.width(10.dp))
-                                Text(task.title, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+                RevealIn(visible = revealedTasks) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onOpenTasks() },
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                if (activeTasks > 0) "В работе: $activeTasks задач"
+                                else "Все задачи выполнены! 🎉",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            tasks.filter { !it.done }.take(3).forEach { task ->
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 3.dp)) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .clip(CircleShape)
+                                            .background(if (task.color != 0) Color(task.color) else MaterialTheme.colorScheme.primary)
+                                    )
+                                    Spacer(Modifier.width(10.dp))
+                                    Text(task.title, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+                                }
                             }
                         }
                     }
@@ -210,40 +225,52 @@ fun DashboardScreen(
             Spacer(Modifier.height(24.dp))
 
             // Вода и настроение
-            WaterCard(glasses = todayWater, onPlus = {
-                scope.launch { repository.incrementWater(todayKey, 1) }
-            }, onMinus = {
-                scope.launch { repository.incrementWater(todayKey, -1) }
-            })
+            val revealedWater = rememberRevealed(360)
+            RevealIn(visible = revealedWater) {
+                WaterCard(glasses = todayWater, onPlus = {
+                    scope.launch { repository.incrementWater(todayKey, 1) }
+                }, onMinus = {
+                    scope.launch { repository.incrementWater(todayKey, -1) }
+                })
+            }
 
             Spacer(Modifier.height(16.dp))
 
-            MoodCard(currentMood = moods.find { it.dateKey == todayKey }?.mood ?: "") { mood ->
-                scope.launch { repository.setMood(todayKey, mood) }
-            }
-
-            Spacer(Modifier.height(24.dp))
-
-            // Habits today
-            SectionHeader("Привычки на сегодня", onClick = { onOpenStats() })
-            Spacer(Modifier.height(8.dp))
-            if (habits.isEmpty()) {
-                EmptyHint("Добавь привычки во вкладке «Привычки»")
-            } else {
-                habits.forEach { habit ->
-                    HabitTodayRow(habit, done = todayKey in habit.completionDates)
+            val revealedMood = rememberRevealed(450)
+            RevealIn(visible = revealedMood) {
+                MoodCard(currentMood = moods.find { it.dateKey == todayKey }?.mood ?: "") { mood ->
+                    scope.launch { repository.setMood(todayKey, mood) }
                 }
             }
 
             Spacer(Modifier.height(24.dp))
 
-            SectionHeader("Последние заметки", onClick = { onOpenNotes() })
-            Spacer(Modifier.height(8.dp))
-            if (notes.isEmpty()) {
-                EmptyHint("Создай первую заметку кнопкой +")
-            } else {
-                notes.sortedByDescending { it.updatedAt }.take(3).forEach { note ->
-                    NoteCard(note)
+            // Habits today
+            val revealedHabits = rememberRevealed(540)
+            RevealIn(visible = revealedHabits) {
+                SectionHeader("Привычки на сегодня", onClick = { onOpenStats() })
+                Spacer(Modifier.height(8.dp))
+                if (habits.isEmpty()) {
+                    EmptyHint("Добавь привычки во вкладке «Привычки»")
+                } else {
+                    habits.forEach { habit ->
+                        HabitTodayRow(habit, done = todayKey in habit.completionDates)
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            val revealedNotes = rememberRevealed(630)
+            RevealIn(visible = revealedNotes) {
+                SectionHeader("Последние заметки", onClick = { onOpenNotes() })
+                Spacer(Modifier.height(8.dp))
+                if (notes.isEmpty()) {
+                    EmptyHint("Создай первую заметку кнопкой +")
+                } else {
+                    notes.sortedByDescending { it.updatedAt }.take(3).forEach { note ->
+                        NoteCard(note)
+                    }
                 }
             }
 
@@ -289,6 +316,7 @@ private fun QuoteOfTheDayCard() {
 @Composable
 private fun WaterCard(glasses: Int, onPlus: () -> Unit, onMinus: () -> Unit) {
     val progress = (glasses.toFloat() / WATER_GOAL).coerceIn(0f, 1f)
+    val animatedProgress by animateFloatAsState(progress, nebulaSpring, label = "waterProgress")
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -304,7 +332,7 @@ private fun WaterCard(glasses: Int, onPlus: () -> Unit, onMinus: () -> Unit) {
             }
             Spacer(Modifier.height(10.dp))
             LinearProgressIndicator(
-                progress = { progress },
+                progress = { animatedProgress },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp)
@@ -346,6 +374,11 @@ private fun MoodCard(currentMood: String, onSelect: (String) -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 MoodOptions.forEach { mood ->
                     val selected = mood == currentMood || (currentMood.isEmpty() && mood == "😐")
+                    val emojiScale by animateFloatAsState(
+                        targetValue = if (selected) 1.3f else 1f,
+                        animationSpec = nebulaSpring,
+                        label = "moodScale"
+                    )
                     Card(
                         modifier = Modifier
                             .weight(1f)
@@ -355,7 +388,15 @@ private fun MoodCard(currentMood: String, onSelect: (String) -> Unit) {
                         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
-                        Box(modifier = Modifier.padding(8.dp), contentAlignment = Alignment.Center) {
+                        Box(
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .graphicsLayer {
+                                    scaleX = emojiScale
+                                    scaleY = emojiScale
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
                             Text(mood, fontSize = 26.sp)
                         }
                     }
@@ -397,6 +438,7 @@ fun EmptyHint(text: String) {
 @Composable
 private fun FocusCard(todayFocus: Int, goal: Int) {
     val progress = if (goal > 0) (todayFocus.toFloat() / goal).coerceIn(0f, 1f) else 0f
+    val animatedProgress by animateFloatAsState(progress, nebulaSpring, label = "focusProgress")
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
@@ -437,7 +479,7 @@ private fun FocusCard(todayFocus: Int, goal: Int) {
                 )
                 Spacer(Modifier.height(8.dp))
                 LinearProgressIndicator(
-                    progress = { progress },
+                    progress = { animatedProgress },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(8.dp)
@@ -457,7 +499,7 @@ private fun FocusCard(todayFocus: Int, goal: Int) {
 }
 
 @Composable
-fun StatTile(modifier: Modifier = Modifier, label: String, value: String, color: Color, onClick: (() -> Unit)? = null) {
+fun StatTile(modifier: Modifier = Modifier, label: String, value: Int, color: Color, onClick: (() -> Unit)? = null) {
     val clickModifier = if (onClick != null) Modifier.clickable { onClick() } else Modifier
     Card(
         modifier = modifier.then(clickModifier),
@@ -466,7 +508,7 @@ fun StatTile(modifier: Modifier = Modifier, label: String, value: String, color:
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = color)
+            AnimatedNumber(target = value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = color)
             Spacer(Modifier.height(4.dp))
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
